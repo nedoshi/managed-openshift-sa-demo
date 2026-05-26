@@ -26,6 +26,9 @@ metadata:
     app: ollama
 spec:
   replicas: 1
+  # RWO PVC: RollingUpdate leaves two pods and fails Multi-Attach.
+  strategy:
+    type: Recreate
   selector:
     matchLabels:
       app: ollama
@@ -52,6 +55,15 @@ spec:
           value: "/models"
         - name: HOME
           value: "/models"
+        # Match CPU limit for faster inference on large workers (m5.4xlarge+ recommended).
+        - name: OLLAMA_NUM_THREADS
+          value: "6"
+        - name: OLLAMA_MAX_LOADED_MODELS
+          value: "1"
+        - name: OLLAMA_NUM_PARALLEL
+          value: "1"
+        - name: OLLAMA_FLASH_ATTENTION
+          value: "1"
         securityContext:
           allowPrivilegeEscalation: false
           runAsNonRoot: true
@@ -60,13 +72,15 @@ spec:
             - ALL
           seccompProfile:
             type: RuntimeDefault
+        # Max on current m5a.2xlarge workers (~7.5 CPU / ~30 GiB allocatable per node).
+        # Tuned to fit one 2xlarge node with n8n + system pods. Bump after adding m5.4xlarge workers.
         resources:
           requests:
-            memory: "4Gi"
-            cpu: "2"
+            cpu: "5"
+            memory: "20Gi"
           limits:
-            memory: "8Gi"
-            cpu: "4"
+            cpu: "6"
+            memory: "24Gi"
         volumeMounts:
         - name: ollama-models
           mountPath: /models
