@@ -1,4 +1,4 @@
-# OpenShift Solution Architect Demo (Minimal Share Package)
+# OpenShift Solution Architect Demo
 
 > Developed using Claude (Anthropic) — workflows, demo scripts, and documentation in this repository utilize Claude-assisted development to accelerate delivery.
 
