@@ -1,5 +1,7 @@
 # OpenShift Solution Architect Demo (Minimal Share Package)
 
+> Developed using Claude (Anthropic) — workflows, demo scripts, and documentation in this repository utilize Claude-assisted development to accelerate delivery.
+
 This repo includes only the files needed to run the Solution Architect demo once your ROSA cluster already has n8n and MCP available (for example via Operator install).
 
 ## Included
