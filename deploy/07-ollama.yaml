@@ -1,0 +1,266 @@
+# Ollama on ROSA — single manifest (CPU default, optional GPU).
+#
+# Prerequisites: namespace n8n exists (deploy/01-namespace.yaml).
+#
+# CPU (default):
+#   oc apply -f deploy/07-ollama.yaml
+#   ./scripts/setup-ollama-rosa.sh
+#
+# GPU (NVIDIA GPU Operator + GPU machine pool required):
+#   ./scripts/setup-ollama-rosa.sh --gpu
+#   # or: oc delete deployment ollama -n n8n && ./scripts/setup-ollama-rosa.sh --gpu-only
+#
+# Notes:
+#   - Replaces older 07-ollama-deployment.yaml, -statefulset.yaml, -deployment-rwx.yaml, 08-ollama-deployment-gpu.yaml
+#   - RWO PVC: Deployment uses Recreate strategy (no Multi-Attach on rollout)
+#   - StatefulSet / RWX variants removed; use this Deployment unless you need multi-replica shared storage
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: ollama-models-pvc
+  namespace: n8n
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 50Gi
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: ollama
+  namespace: n8n
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ollama
+  namespace: n8n
+  labels:
+    app: ollama
+spec:
+  selector:
+    app: ollama
+  ports:
+    - port: 11434
+      targetPort: 11434
+      protocol: TCP
+      name: http
+  type: ClusterIP
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: ollama
+  namespace: n8n
+  labels:
+    app: ollama
+spec:
+  to:
+    kind: Service
+    name: ollama
+  port:
+    targetPort: http
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
+---
+# @@@ OLLAMA-GPU-DEPLOYMENT-START
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ollama
+  namespace: n8n
+  labels:
+    app: ollama
+    ollama.ai/compute: gpu
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: ollama
+  template:
+    metadata:
+      labels:
+        app: ollama
+        ollama.ai/compute: gpu
+    spec:
+      serviceAccountName: ollama
+      nodeSelector:
+        nvidia.com/gpu.present: "true"
+      tolerations:
+        - key: nvidia.com/gpu
+          operator: Exists
+          effect: NoSchedule
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: ollama
+          image: ollama/ollama:latest
+          ports:
+            - containerPort: 11434
+              protocol: TCP
+          env:
+            - name: OLLAMA_HOST
+              value: "0.0.0.0:11434"
+            - name: OLLAMA_MODELS
+              value: "/models"
+            - name: HOME
+              value: "/models"
+            - name: OLLAMA_NUM_GPU
+              value: "1"
+            - name: OLLAMA_MAX_LOADED_MODELS
+              value: "1"
+            - name: OLLAMA_NUM_PARALLEL
+              value: "1"
+            - name: OLLAMA_KEEP_ALIVE
+              value: "30m"
+            - name: OLLAMA_NUM_CTX
+              value: "8192"
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsNonRoot: true
+            capabilities:
+              drop:
+                - ALL
+            seccompProfile:
+              type: RuntimeDefault
+          resources:
+            requests:
+              cpu: "2"
+              memory: "12Gi"
+              nvidia.com/gpu: "1"
+            limits:
+              cpu: "4"
+              memory: "16Gi"
+              nvidia.com/gpu: "1"
+          volumeMounts:
+            - name: ollama-models
+              mountPath: /models
+          startupProbe:
+            httpGet:
+              path: /
+              port: 11434
+            failureThreshold: 60
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 11434
+            initialDelaySeconds: 30
+            periodSeconds: 15
+            timeoutSeconds: 5
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 11434
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            timeoutSeconds: 5
+      volumes:
+        - name: ollama-models
+          persistentVolumeClaim:
+            claimName: ollama-models-pvc
+# @@@ OLLAMA-GPU-DEPLOYMENT-END
+---
+# CPU deployment — last Deployment in this file wins on plain `oc apply -f` (keeps CPU as default).
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ollama
+  namespace: n8n
+  labels:
+    app: ollama
+    ollama.ai/compute: cpu
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: ollama
+  template:
+    metadata:
+      labels:
+        app: ollama
+        ollama.ai/compute: cpu
+    spec:
+      serviceAccountName: ollama
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: ollama
+          image: ollama/ollama:latest
+          ports:
+            - containerPort: 11434
+              protocol: TCP
+          env:
+            - name: OLLAMA_HOST
+              value: "0.0.0.0:11434"
+            - name: OLLAMA_MODELS
+              value: "/models"
+            - name: HOME
+              value: "/models"
+            - name: OLLAMA_NUM_THREADS
+              value: "6"
+            - name: OLLAMA_MAX_LOADED_MODELS
+              value: "1"
+            - name: OLLAMA_NUM_PARALLEL
+              value: "1"
+            - name: OLLAMA_FLASH_ATTENTION
+              value: "1"
+            - name: OLLAMA_KEEP_ALIVE
+              value: "30m"
+            - name: OLLAMA_NUM_CTX
+              value: "4096"
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsNonRoot: true
+            capabilities:
+              drop:
+                - ALL
+            seccompProfile:
+              type: RuntimeDefault
+          resources:
+            requests:
+              cpu: "5"
+              memory: "20Gi"
+            limits:
+              cpu: "6"
+              memory: "24Gi"
+          volumeMounts:
+            - name: ollama-models
+              mountPath: /models
+          startupProbe:
+            httpGet:
+              path: /
+              port: 11434
+            failureThreshold: 30
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 11434
+            initialDelaySeconds: 60
+            periodSeconds: 10
+            timeoutSeconds: 5
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 11434
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            timeoutSeconds: 3
+      volumes:
+        - name: ollama-models
+          persistentVolumeClaim:
+            claimName: ollama-models-pvc

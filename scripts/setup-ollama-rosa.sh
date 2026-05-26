@@ -5,6 +5,10 @@
 
 set -e
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+OLLAMA_MANIFEST="${REPO_ROOT}/deploy/07-ollama.yaml"
+
 # Colors
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -12,24 +16,41 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m'
 
+USE_GPU=false
+GPU_ONLY=false
+for arg in "$@"; do
+  case "$arg" in
+    --gpu) USE_GPU=true ;;
+    --gpu-only) USE_GPU=true; GPU_ONLY=true ;;
+    -h|--help)
+      echo "Usage: $0 [--gpu | --gpu-only]"
+      echo "  (default) CPU deployment from deploy/07-ollama.yaml"
+      echo "  --gpu       Apply shared resources, then replace deployment with GPU variant"
+      echo "  --gpu-only  Replace deployment with GPU variant (PVC/Service must exist)"
+      exit 0
+      ;;
+  esac
+done
+
+apply_ollama_gpu_deployment() {
+  awk '/^# @@@ OLLAMA-GPU-DEPLOYMENT-START/,/^# @@@ OLLAMA-GPU-DEPLOYMENT-END/' "$OLLAMA_MANIFEST" \
+    | grep -v '^#' | oc apply -f -
+}
+
 echo -e "${BLUE}╔════════════════════════════════════════════════════════════════╗${NC}"
 echo -e "${BLUE}║  Deploy Ollama to ROSA HCP - No API Keys Required            ║${NC}"
 echo -e "${BLUE}╚════════════════════════════════════════════════════════════════╝${NC}"
 echo ""
 
-# Check if oc is installed
 if ! command -v oc &> /dev/null; then
     echo -e "${RED}❌ Error: oc CLI not found${NC}"
-    echo -e "${YELLOW}Please install: https://docs.openshift.com/container-platform/latest/cli_reference/openshift_cli/getting-started-cli.html${NC}"
     exit 1
 fi
 
 echo -e "${GREEN}✅ oc CLI found${NC}"
 
-# Check if logged in to OpenShift
 if ! oc whoami &> /dev/null; then
     echo -e "${RED}❌ Not logged in to OpenShift${NC}"
-    echo -e "${YELLOW}Please login first: oc login${NC}"
     exit 1
 fi
 
@@ -39,7 +60,6 @@ echo -e "${GREEN}✅ Logged in as: ${CURRENT_USER}${NC}"
 echo -e "${GREEN}✅ Server: ${CURRENT_SERVER}${NC}"
 echo ""
 
-# Check if n8n namespace exists
 if ! oc get namespace n8n &> /dev/null; then
     echo -e "${YELLOW}⚠️  Namespace 'n8n' not found${NC}"
     read -p "Create it? (y/n): " CREATE_NS
@@ -55,140 +75,69 @@ else
 fi
 
 echo ""
-echo -e "${BLUE}Deploying Ollama to ROSA...${NC}"
-
-# Deploy Ollama
-if oc apply -f deploy/07-ollama-deployment.yaml; then
-    echo -e "${GREEN}✅ Ollama deployment created${NC}"
+if [[ "$USE_GPU" == true ]]; then
+    echo -e "${BLUE}Deploying Ollama (GPU)...${NC}"
+    if [[ "$GPU_ONLY" != true ]]; then
+        oc apply -f "$OLLAMA_MANIFEST"
+    fi
+    oc delete deployment ollama -n n8n --ignore-not-found
+    apply_ollama_gpu_deployment
 else
-    echo -e "${RED}❌ Failed to deploy Ollama${NC}"
-    exit 1
+    echo -e "${BLUE}Deploying Ollama (CPU)...${NC}"
+    oc apply -f "$OLLAMA_MANIFEST"
 fi
 
 echo ""
 echo -e "${BLUE}Waiting for Ollama pod to be ready...${NC}"
-echo -e "${YELLOW}This may take 1-2 minutes...${NC}"
+echo -e "${YELLOW}This may take 1-2 minutes (longer on first GPU start)...${NC}"
 
-if oc wait --for=condition=ready pod -l app=ollama -n n8n --timeout=300s; then
+if oc wait --for=condition=ready pod -l app=ollama -n n8n --timeout=600s; then
     echo -e "${GREEN}✅ Ollama is ready${NC}"
 else
     echo -e "${RED}❌ Ollama pod failed to start${NC}"
-    echo -e "${YELLOW}Check logs: oc logs -l app=ollama -n n8n${NC}"
+    echo -e "${YELLOW}Check: oc describe pod -l app=ollama -n n8n${NC}"
     exit 1
 fi
 
 echo ""
 echo -e "${BLUE}Choose model to download:${NC}"
-echo "1) llama3.1:8b (Recommended - 4.7GB, fast, good quality)"
-echo "2) qwen2.5:14b (9GB, excellent for technical content)"
-echo "3) llama3.1:70b (40GB, best quality, needs lots of resources)"
-echo "4) mistral:latest (4.1GB, good alternative)"
-echo "5) Skip model download (do it manually later)"
-read -p "Enter choice (1-5): " MODEL_CHOICE
+echo "1) llama3.1:8b (Recommended - 4.7GB)"
+echo "2) qwen2.5:7b (4.7GB, good for technical content)"
+echo "3) qwen2.5:3b (2GB, fastest on CPU)"
+echo "4) Skip model download (do it manually later)"
+read -p "Enter choice (1-4): " MODEL_CHOICE
 
 case $MODEL_CHOICE in
-    1)
-        MODEL="llama3.1:8b"
-        ;;
-    2)
-        MODEL="qwen2.5:14b"
-        ;;
-    3)
-        MODEL="llama3.1:70b"
-        echo -e "${YELLOW}⚠️  Warning: This is a large model (40GB). Make sure you have enough resources.${NC}"
-        ;;
-    4)
-        MODEL="mistral:latest"
-        ;;
-    5)
-        echo -e "${YELLOW}Skipping model download${NC}"
-        MODEL=""
-        ;;
-    *)
-        echo -e "${RED}Invalid choice, defaulting to llama3.1:8b${NC}"
-        MODEL="llama3.1:8b"
-        ;;
+    1) MODEL="llama3.1:8b" ;;
+    2) MODEL="qwen2.5:7b" ;;
+    3) MODEL="qwen2.5:3b" ;;
+    4) MODEL="" ;;
+    *) MODEL="llama3.1:8b" ;;
 esac
+
+POD_NAME=$(oc get pod -l app=ollama -n n8n -o jsonpath='{.items[0].metadata.name}')
 
 if [ -n "$MODEL" ]; then
     echo ""
     echo -e "${BLUE}Pulling model: ${MODEL}${NC}"
-    echo -e "${YELLOW}This may take 5-10 minutes depending on model size...${NC}"
-
-    POD_NAME=$(oc get pod -l app=ollama -n n8n -o jsonpath='{.items[0].metadata.name}')
-
     if oc exec -n n8n "$POD_NAME" -- ollama pull "$MODEL"; then
         echo -e "${GREEN}✅ Model downloaded: ${MODEL}${NC}"
     else
         echo -e "${RED}❌ Failed to download model${NC}"
-        echo -e "${YELLOW}You can download it later manually:${NC}"
-        echo "  oc exec -n n8n deployment/ollama -- ollama pull $MODEL"
     fi
 fi
-
-# Test Ollama
-echo ""
-echo -e "${BLUE}Testing Ollama...${NC}"
-
-if [ -n "$MODEL" ]; then
-    TEST_RESPONSE=$(oc exec -n n8n "$POD_NAME" -- ollama run "$MODEL" "Say 'OK' if you're working" 2>&1 | tail -1)
-    if [[ $TEST_RESPONSE == *"OK"* ]] || [[ $TEST_RESPONSE == *"working"* ]]; then
-        echo -e "${GREEN}✅ Ollama is working!${NC}"
-    else
-        echo -e "${YELLOW}⚠️  Ollama responded but may need verification${NC}"
-        echo "Response: $TEST_RESPONSE"
-    fi
-fi
-
-# Get Ollama route
-OLLAMA_ROUTE=$(oc get route ollama -n n8n -o jsonpath='{.spec.host}' 2>/dev/null || echo "")
 
 echo ""
 echo -e "${GREEN}╔════════════════════════════════════════════════════════════════╗${NC}"
 echo -e "${GREEN}║  Ollama Deployment Complete! 🎉                                ║${NC}"
 echo -e "${GREEN}╚════════════════════════════════════════════════════════════════╝${NC}"
 echo ""
-echo -e "${BLUE}📝 Ollama Endpoints:${NC}"
-echo ""
-echo -e "${GREEN}Internal (from n8n):${NC}"
-echo "  http://ollama.n8n.svc.cluster.local:11434"
-echo ""
-if [ -n "$OLLAMA_ROUTE" ]; then
-    echo -e "${GREEN}External (for testing):${NC}"
-    echo "  https://$OLLAMA_ROUTE"
-    echo ""
+echo -e "${BLUE}Internal URL (n8n):${NC} http://ollama.n8n.svc.cluster.local:11434"
+echo -e "${BLUE}Manifest:${NC} deploy/07-ollama.yaml"
+if [[ "$USE_GPU" == true ]]; then
+    echo -e "${BLUE}Compute:${NC} GPU (nvidia.com/gpu)"
+else
+    echo -e "${BLUE}Compute:${NC} CPU"
 fi
-echo -e "${BLUE}📋 Next Steps:${NC}"
-echo ""
-echo "1. Import the Ollama workflow into n8n:"
-echo "   - File: workflows/03-solution-architect-ollama.json"
-echo "   - In n8n: Import from File"
-echo ""
-echo "2. The workflow is pre-configured to use:"
-echo "   - Ollama URL: http://ollama.n8n.svc.cluster.local:11434"
-if [ -n "$MODEL" ]; then
-    echo "   - Model: $MODEL"
-fi
-echo ""
-echo "3. Test with sample inputs from:"
-echo "   - demo-scripts/SAMPLE-INPUTS.md"
-echo ""
-echo -e "${BLUE}🔧 Useful Commands:${NC}"
-echo ""
-echo "# List available models:"
-echo "  oc exec -n n8n deployment/ollama -- ollama list"
-echo ""
-echo "# Pull additional models:"
-echo "  oc exec -n n8n deployment/ollama -- ollama pull llama3.1:8b"
-echo ""
-echo "# Test Ollama:"
-echo "  oc exec -n n8n deployment/ollama -- ollama run $MODEL 'Hello'"
-echo ""
-echo "# Check logs:"
-echo "  oc logs -l app=ollama -n n8n -f"
-echo ""
-echo "# Default manifest: 5 CPU / 20Gi req, 6 CPU / 24Gi lim (max for m5a.2xlarge workers)."
-echo "# If pod is Pending, check: oc describe pod -l app=ollama -n n8n"
 echo ""
 echo -e "${GREEN}✅ Ready to use! No API keys required.${NC}"
-echo ""
