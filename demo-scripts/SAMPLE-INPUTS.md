@@ -1096,4 +1096,3 @@ Should generate a simplified proposal even without the full detailed input.
 
 ---
 
-**Ready to copy-paste during your demo!** 🚀

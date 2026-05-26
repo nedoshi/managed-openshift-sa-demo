@@ -25,7 +25,8 @@ An **n8n workflow** that turns discovery notes into complete ROSA proposals usin
 ./deploy/deploy-to-rosa-hcp.sh
 
 # 2. Deploy Ollama (local LLM, no API keys)
-./scripts/setup-ollama-rosa.sh
+./scripts/setup-ollama-rosa.sh          # CPU
+# ./scripts/setup-ollama-rosa.sh --gpu  # GPU (see Prerequisites)
 
 # 3. Import workflow in n8n UI
 #    workflows/03-solution-architect-ollama.json
@@ -51,6 +52,19 @@ demo-scripts/    # SAMPLE-INPUTS.md (copy-paste demo prompts)
 
 ## Prerequisites
 
+**Cluster & tools**
+
 - ROSA HCP or ARO cluster
 - `oc` CLI logged in
 - n8n community package: `@n8n/n8n-nodes-langchain` (install via n8n UI after deploy)
+
+**Ollama on CPU (default)** — no GPU required; inference is slower (minutes for long replies).
+
+**Ollama on GPU (recommended for demos)** — required if you use `./scripts/setup-ollama-rosa.sh --gpu`:
+
+- GPU **worker machine pool** on ROSA (e.g. AWS `g4dn.xlarge`, `g5.xlarge`)
+- **[NVIDIA GPU Operator](https://docs.nvidia.com/datacenter/cloud-native/gpu-operator/latest/openshift/olm-install.html)** installed and `ClusterPolicy` Ready
+- GPU nodes labeled by the operator, e.g. `nvidia.com/gpu.present=true`
+- Verify: `oc get nodes -l nvidia.com/gpu.present=true`
+
+Use `llama3.1:8b` or `qwen2.5:7b` on a 16GB GPU (T4); avoid `qwen2.5:14b` unless the GPU has ≥24GB VRAM.

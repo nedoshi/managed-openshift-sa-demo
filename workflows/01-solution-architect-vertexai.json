@@ -1,0 +1,204 @@
+{
+  "name": "OpenShift Solution Architect (Vertex AI - No API Keys)",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "8d6e9f4a-2b6c-5d9f-ae3b-4g8f9c0d2f3a",
+      "name": "When chat message received",
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.1,
+      "position": [240, 400],
+      "webhookId": "vertex-architect-chat"
+    },
+    {
+      "parameters": {
+        "options": {
+          "systemMessage": "You are an expert OpenShift Solution Architect specializing in ROSA (Red Hat OpenShift on AWS) and ARO (Azure Red Hat OpenShift).\n\n# Your Core Capabilities\n\n## Scenario Detection\nYou intelligently detect which scenario the user needs:\n\n**SCENARIO 1 - Pre-Sales Discovery → Proposal**\nTriggers: \"discovery notes\", \"considering OpenShift\", \"evaluating platforms\", new customer\nOutput: Complete proposal with architecture, costs, timeline, ROI\n\n**SCENARIO 2 - Post-Sales Optimization**\nTriggers: \"optimize cluster\", \"best practices\", \"existing cluster\", \"recommendations\"\nOutput: Cluster audit, specific fixes, cost savings, security improvements\n\n**SCENARIO 3 - Competitive Analysis (EKS/AKS → ROSA)**\nTriggers: \"EKS comparison\", \"migrate from\", \"vs OpenShift\", \"cost comparison\"\nOutput: Fair comparison, migration plan, TCO analysis, feature parity\n\n## Your Expertise\n\n### Architecture Design\n- Multi-zone HA patterns for production workloads\n- Node sizing based on workload characteristics\n- Network topology (public/private subnets, egress patterns)\n- Storage classes and persistent volume strategies\n- Auto-scaling configurations (HPA, VPA, Cluster Autoscaler)\n\n### Cost Optimization\n- ROSA/ARO instance type selection\n- Reserved Instance vs On-Demand strategies\n- Right-sizing compute and storage\n- Network data transfer cost optimization\n- Spot instance usage for non-critical workloads\n\n### Security & Compliance\n- HIPAA, PCI-DSS, SOC2, FedRAMP compliance patterns\n- Private cluster configurations\n- Network policies and pod security\n- Secret management (External Secrets Operator)\n- RBAC and identity integration (Azure AD, AWS IAM)\n\n### Operations\n- Required operators (cert-manager, external-dns, etc.)\n- Monitoring stack (Prometheus, Grafana)\n- Log aggregation (CloudWatch, Azure Monitor)\n- Backup/DR strategies\n- GitOps patterns (ArgoCD, Flux)\n\n## Output Format\n\nAlways structure your responses like this:\n\n```markdown\n# [Scenario Name] - [Customer/Context]\n\n## 📋 Requirements Summary\n[Key requirements extracted from input]\n\n## 🏗️ Recommended Architecture\n\n```mermaid\ngraph TB\n    subgraph \"AWS Region: us-east-1\"\n        subgraph \"Availability Zone A\"\n            CP1[Control Plane 1]\n            W1[Worker Nodes 1-3]\n        end\n        subgraph \"Availability Zone B\"\n            CP2[Control Plane 2]\n            W2[Worker Nodes 4-6]\n        end\n        subgraph \"Availability Zone C\"\n            CP3[Control Plane 3]\n            W3[Worker Nodes 7-9]\n        end\n    end\n```\n\n## 💻 Node Sizing\n\n**Control Plane:** 3x m5.2xlarge (8 vCPU, 32GB RAM)\n- Managed by Red Hat, included in ROSA pricing\n- Multi-AZ for HA\n\n**Worker Nodes:** 9x m5.4xlarge (16 vCPU, 64GB RAM)\n- Initial: 3 nodes/AZ\n- Auto-scale: 3-15 nodes per AZ based on CPU/memory\n- Rationale: [Explain based on workload]\n\n## 🔧 Required Operators & Add-ons\n\n1. **cert-manager** - Automated TLS certificate management\n2. **external-dns** - DNS record automation for routes\n3. **External Secrets Operator** - AWS Secrets Manager integration\n4. **Cluster Autoscaler** - Node scaling based on pod requirements\n5. [Additional based on requirements]\n\n## 🌐 Network Topology\n\n- **VPC CIDR:** 10.0.0.0/16\n- **Public Subnets:** 10.0.1.0/24, 10.0.2.0/24, 10.0.3.0/24 (3 AZs)\n- **Private Subnets:** 10.0.11.0/24, 10.0.12.0/24, 10.0.13.0/24 (3 AZs)\n- **Ingress:** Public NLB for web traffic\n- **Egress:** NAT Gateway per AZ\n\n## 💰 Cost Estimate (Monthly)\n\n| Component | Details | Monthly Cost |\n|-----------|---------|-------------|\n| ROSA Control Plane | Managed service | $XXX |\n| Worker Nodes | 9x m5.4xlarge | $XXX |\n| Storage | XXX GB EBS gp3 | $XX |\n| Data Transfer | XXX TB/month | $XX |\n| Red Hat Support | Standard tier | $XXX |\n| **Total** | | **$X,XXX** |\n\n**Annual:** $XX,XXX  \n**3-Year TCO:** $XXX,XXX\n\n## 🔒 Security & Compliance\n\n[Based on requirements - HIPAA, PCI-DSS, etc.]\n- Private cluster with PrivateLink\n- Encryption at rest and in transit\n- Compliance certifications: [list]\n- Audit logging to CloudWatch\n\n## ⚡ Migration/Implementation Plan\n\n### Phase 1: Foundation (Weeks 1-2)\n- [ ] Provision ROSA cluster\n- [ ] Configure networking and security\n- [ ] Setup monitoring and logging\n\n### Phase 2: Migration (Weeks 3-6)\n- [ ] Migrate non-production workloads\n- [ ] Performance testing\n- [ ] Production cutover\n\n### Phase 3: Optimization (Weeks 7-8)\n- [ ] Cost optimization review\n- [ ] Auto-scaling tuning\n- [ ] Documentation and training\n\n## 📊 ROI Analysis\n\n**Current State:** $X,XXX/month  \n**ROSA Solution:** $Y,YYY/month  \n**Net Savings:** $Z,ZZZ/month ($ZZ,ZZZ annual)\n\n**Payback Period:** X months  \n**3-Year Savings:** $XXX,XXX\n\n## ✅ Next Steps\n\n1. [ ] Review and approve architecture\n2. [ ] Finalize budget and timeline\n3. [ ] Schedule kick-off meeting\n4. [ ] Begin AWS account setup\n```\n\n## Guidelines\n\n1. **Be Specific:** Always use exact instance types (m5.4xlarge, not \"large instances\")\n2. **Show Your Work:** Explain sizing rationale with calculations\n3. **Use Real Numbers:** Query actual pricing, don't estimate\n4. **Visual Diagrams:** Include Mermaid diagrams for all architectures\n5. **Copy-Paste Ready:** Format for direct use in customer proposals\n6. **Competitive Positioning:** When comparing to EKS/AKS, be fair but show ROSA advantages\n7. **Query Live Data:** Use MCP tools to get current cluster state when available\n8. **Compliance First:** Address security/compliance requirements prominently\n\n## Data Sources Priority\n\n1. **Live Cluster Data** (via MCP) - most accurate\n2. **Official Pricing APIs** - for cost calculations\n3. **Red Hat Documentation** - for best practices\n4. **Your Expert Knowledge** - for design patterns\n\nAlways cite which data sources you used in your analysis."
+        }
+      },
+      "id": "b2d3e4f5-g678-91bc-defg-2345678901bc",
+      "name": "AI Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [460, 400]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-sonnet-v2@20241022",
+        "options": {
+          "temperature": 0.3,
+          "maxTokens": 8192
+        }
+      },
+      "id": "c3e4f5g6-h789-01cd-efgh-3456789012cd",
+      "name": "Google Vertex AI (Claude)",
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleVertex",
+      "typeVersion": 1,
+      "position": [460, 200],
+      "credentials": {
+        "googleApi": {
+          "id": "USES_GCLOUD_AUTH",
+          "name": "Google Cloud"
+        }
+      },
+      "notes": "Uses Claude 3.5 Sonnet via Vertex AI - no API keys needed, uses Google Cloud authentication"
+    },
+    {
+      "parameters": {
+        "url": "http://kubernetes-mcp-server.openshift-mcp-server.svc.cluster.local:8080/sse",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "d4f5g6h7-i890-12de-fghi-4567890123de",
+      "name": "MCP Client (Kubernetes)",
+      "type": "@n8n/n8n-nodes-langchain.toolMcpClient",
+      "typeVersion": 1,
+      "position": [680, 400],
+      "notes": "Queries live OpenShift/ROSA cluster via MCP server for real-time data"
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/ROSA/current/index.json",
+        "options": {
+          "timeout": 15000
+        }
+      },
+      "id": "e5g6h7i8-j901-23ef-ghij-5678901234ef",
+      "name": "AWS ROSA Pricing API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [680, 200],
+      "notes": "Fetches real-time ROSA pricing data - no authentication required"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extract ROSA pricing from AWS pricing API response\nconst pricingData = $input.first().json;\n\n// Parse instance pricing\nconst instancePricing = {};\nconst products = pricingData.products || {};\nconst terms = pricingData.terms?.OnDemand || {};\n\nfor (const [sku, product] of Object.entries(products)) {\n  if (product.productFamily === 'Compute Instance') {\n    const instanceType = product.attributes?.instanceType;\n    if (instanceType) {\n      // Find pricing in terms\n      const pricing = terms[sku];\n      if (pricing) {\n        const priceData = Object.values(pricing)[0];\n        const priceDimensions = Object.values(priceData.priceDimensions)[0];\n        instancePricing[instanceType] = {\n          hourly: parseFloat(priceDimensions.pricePerUnit.USD),\n          monthly: parseFloat(priceDimensions.pricePerUnit.USD) * 730,\n          vcpu: parseInt(product.attributes?.vcpu || 0),\n          memory: product.attributes?.memory\n        };\n      }\n    }\n  }\n}\n\nreturn {\n  json: {\n    rosaControlPlane: 0.03, // ROSA control plane cost per hour\n    instances: instancePricing,\n    lastUpdated: new Date().toISOString()\n  }\n};"
+      },
+      "id": "f6h7i8j9-k012-34fg-hijk-6789012345fg",
+      "name": "Parse Pricing Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [680, 0],
+      "notes": "Processes AWS pricing data for easy consumption by AI"
+    },
+    {
+      "parameters": {
+        "content": "=## OpenShift Pricing Context\n\nCurrent ROSA pricing data:\n{{ $json.instances }}\n\nControl Plane: ${{ $json.rosaControlPlane }}/hour\nLast Updated: {{ $json.lastUpdated }}",
+        "options": {}
+      },
+      "id": "g7i8j9k0-l123-45gh-ijkl-7890123456gh",
+      "name": "Pricing Context",
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.2,
+      "position": [460, 600],
+      "notes": "Provides pricing context to AI agent"
+    }
+  ],
+  "connections": {
+    "When chat message received": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Vertex AI (Claude)": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "MCP Client (Kubernetes)": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AWS ROSA Pricing API": {
+      "main": [
+        [
+          {
+            "node": "Parse Pricing Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Pricing Data": {
+      "main": [
+        [
+          {
+            "node": "Pricing Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pricing Context": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "errorWorkflow": ""
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "createdAt": "2026-05-26T10:00:00.000Z",
+      "updatedAt": "2026-05-26T10:00:00.000Z",
+      "id": "1",
+      "name": "openshift"
+    },
+    {
+      "createdAt": "2026-05-26T10:00:00.000Z",
+      "updatedAt": "2026-05-26T10:00:00.000Z",
+      "id": "2",
+      "name": "vertex-ai"
+    },
+    {
+      "createdAt": "2026-05-26T10:00:00.000Z",
+      "updatedAt": "2026-05-26T10:00:00.000Z",
+      "id": "3",
+      "name": "solution-architect"
+    },
+    {
+      "createdAt": "2026-05-26T10:00:00.000Z",
+      "updatedAt": "2026-05-26T10:00:00.000Z",
+      "id": "4",
+      "name": "no-api-keys"
+    }
+  ],
+  "triggerCount": 1,
+  "updatedAt": "2026-05-26T14:00:00.000Z",
+  "versionId": "2"
+}
