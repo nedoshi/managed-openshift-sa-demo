@@ -162,8 +162,7 @@ A: llama3.1:8b is 7/10, qwen2.5:14b is 8/10, llama3.1:70b is 9/10
 
 ## 📚 Full Documentation
 
-- **Setup:** [docs/OLLAMA-SETUP.md](docs/OLLAMA-SETUP.md)
-- **Troubleshooting:** Same doc, has full troubleshooting section
+- **Setup & troubleshooting:** This guide (`OLLAMA-QUICKSTART.md`)
 - **Sample Inputs:** [demo-scripts/SAMPLE-INPUTS.md](demo-scripts/SAMPLE-INPUTS.md)
 
 ---
@@ -179,4 +178,4 @@ A: llama3.1:8b is 7/10, qwen2.5:14b is 8/10, llama3.1:70b is 9/10
 
 ---
 
-**Questions? Check [docs/OLLAMA-SETUP.md](docs/OLLAMA-SETUP.md) for complete guide.**
+**Questions?** See the troubleshooting section above and [demo-scripts/SAMPLE-INPUTS.md](demo-scripts/SAMPLE-INPUTS.md).
