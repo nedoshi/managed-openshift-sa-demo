@@ -3,3 +3,37 @@ claude-session.txt
 *.bak
 *.kubeconfig
 .DS_Store
+
+# Google Cloud credentials - NEVER commit these!
+*-key.json
+*-credentials.json
+application_default_credentials.json
+
+# But DO commit the workflow JSON files
+!workflows/*.json
+!deploy/*.json
+
+# n8n local data
+.n8n/
+*.db
+
+# Logs
+*.log
+
+# Environment variables
+.env
+.env.local
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Claude Code workspace
+.claude/
