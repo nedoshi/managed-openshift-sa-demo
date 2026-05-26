@@ -29,6 +29,7 @@ An **n8n workflow** that turns discovery notes into complete ROSA proposals usin
 
 # 3. Import workflow in n8n UI
 #    workflows/03-solution-architect-ollama.json
+#    (Google Docs export: workflows/03-solution-architect-ollama-with-export.json)
 
 # 4. Test with demo-scripts/SAMPLE-INPUTS.md
 ```

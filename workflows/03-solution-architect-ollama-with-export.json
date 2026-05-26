@@ -1,0 +1,206 @@
+{
+  "name": "OpenShift Solution Architect (Ollama + Google Docs Export)",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "8d6e9f4a-2b6c-5d9f-ae3b-4g8f9c0d2f3a",
+      "name": "When chat message received",
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.1,
+      "position": [240, 400],
+      "webhookId": "ollama-architect-chat"
+    },
+    {
+      "parameters": {
+        "options": {
+          "systemMessage": "You are an OpenShift Solution Architect for ROSA/ARO. Detect scenario: (1) discovery→proposal, (2) cluster optimization, (3) EKS/AKS comparison. Use MCP tools only when the user asks about the live cluster. For short messages, reply briefly. For discovery notes, output markdown with: Requirements, Architecture, Node Sizing, Cost Estimate, Security, Next Steps. Use exact instance types. Estimates are approximate. Your full reply is exported to Google Docs automatically."
+        }
+      },
+      "id": "b2d3e4f5-g678-91bc-defg-2345678901bc",
+      "name": "AI Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [460, 400]
+    },
+    {
+      "parameters": {
+        "model": "qwen2.5:7b",
+        "options": {
+          "baseURL": "http://ollama.n8n.svc.cluster.local:11434",
+          "temperature": 0.3,
+          "numPredict": 2048
+        }
+      },
+      "id": "c3e4f5g6-h789-01cd-efgh-3456789012cd",
+      "name": "Ollama (Local)",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOllama",
+      "typeVersion": 1,
+      "position": [460, 200],
+      "notes": "Uses Ollama running on ROSA - no API keys needed, 100% local"
+    },
+    {
+      "parameters": {
+        "url": "http://kubernetes-mcp-server.openshift-mcp-server.svc.cluster.local:8080/sse",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "d4f5g6h7-i890-12de-fghi-4567890123de",
+      "name": "MCP Client (Kubernetes)",
+      "type": "@n8n/n8n-nodes-langchain.toolMcpClient",
+      "typeVersion": 1,
+      "position": [680, 400],
+      "notes": "Queries live OpenShift/ROSA cluster via MCP server for real-time data"
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "title": "={{ \"ROSA Proposal - \" + $now.format('yyyy-MM-dd HH:mm') }}",
+        "bodyParametersUi": {
+          "parameter": [
+            {
+              "name": "requests",
+              "value": "={{ [{\"insertText\": {\"text\": $('AI Agent').item.json.output, \"location\": {\"index\": 1}}}] }}"
+            }
+          ]
+        }
+      },
+      "id": "e5g6h7i8-j901-23ef-ghij-5678901234ef",
+      "name": "Export to Google Docs",
+      "type": "n8n-nodes-base.googleDocs",
+      "typeVersion": 2,
+      "position": [680, 600],
+      "credentials": {
+        "googleDocsOAuth2Api": {
+          "id": "REPLACE_WITH_YOUR_CREDENTIAL_ID",
+          "name": "Google Docs - ROSA Exports"
+        }
+      },
+      "notes": "Automatically saves each proposal to Google Docs for easy sharing"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $('AI Agent').item.json.output }}",
+              "operation": "isNotEmpty"
+            }
+          ]
+        }
+      },
+      "id": "f6h7i8j9-k012-34fg-hijk-6789012345fg",
+      "name": "Check if response exists",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [680, 500],
+      "notes": "Only export if AI generated a response"
+    }
+  ],
+  "connections": {
+    "When chat message received": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Check if response exists",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check if response exists": {
+      "main": [
+        [
+          {
+            "node": "Export to Google Docs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ollama (Local)": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "MCP Client (Kubernetes)": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "errorWorkflow": ""
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "createdAt": "2026-05-26T10:00:00.000Z",
+      "updatedAt": "2026-05-26T10:00:00.000Z",
+      "id": "1",
+      "name": "openshift"
+    },
+    {
+      "createdAt": "2026-05-26T10:00:00.000Z",
+      "updatedAt": "2026-05-26T10:00:00.000Z",
+      "id": "2",
+      "name": "ollama"
+    },
+    {
+      "createdAt": "2026-05-26T10:00:00.000Z",
+      "updatedAt": "2026-05-26T10:00:00.000Z",
+      "id": "3",
+      "name": "solution-architect"
+    },
+    {
+      "createdAt": "2026-05-26T10:00:00.000Z",
+      "updatedAt": "2026-05-26T10:00:00.000Z",
+      "id": "4",
+      "name": "no-api-keys"
+    },
+    {
+      "createdAt": "2026-05-26T10:00:00.000Z",
+      "updatedAt": "2026-05-26T10:00:00.000Z",
+      "id": "5",
+      "name": "enterprise"
+    },
+    {
+      "createdAt": "2026-05-26T10:00:00.000Z",
+      "updatedAt": "2026-05-26T10:00:00.000Z",
+      "id": "6",
+      "name": "google-docs-export"
+    }
+  ],
+  "triggerCount": 1,
+  "updatedAt": "2026-05-26T18:30:00.000Z",
+  "versionId": "4"
+}
