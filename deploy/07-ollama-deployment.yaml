@@ -67,6 +67,8 @@ spec:
         # Keep model loaded between chat messages (avoids ~35s cold start per request).
         - name: OLLAMA_KEEP_ALIVE
           value: "30m"
+        - name: OLLAMA_NUM_CTX
+          value: "4096"
         securityContext:
           allowPrivilegeEscalation: false
           runAsNonRoot: true
