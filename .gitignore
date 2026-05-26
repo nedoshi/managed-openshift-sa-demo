@@ -1,0 +1,5 @@
+deploy/secret.yaml
+claude-session.txt
+*.bak
+*.kubeconfig
+.DS_Store

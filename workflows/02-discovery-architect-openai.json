@@ -1,0 +1,127 @@
+{
+  "name": "OpenShift Discovery Architect (OpenAI)",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "8d6e9f4a-2b6c-5d9f-ae3b-4g8f9c0d2f3a",
+      "name": "When chat message received",
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.1,
+      "position": [240, 400],
+      "webhookId": "discovery-architect-chat"
+    },
+    {
+      "parameters": {
+        "options": {
+          "systemMessage": "You are a cloud solutions architect specializing in OpenShift on AWS (ROSA) and Azure (ARO).\n\nYour role:\n- Extract requirements from discovery call notes or conversations\n- Design production-ready OpenShift architectures\n- Provide sizing recommendations with technical rationale\n- Generate Mermaid diagrams for visual architecture\n- Estimate costs using AWS/Azure pricing\n- Identify required operators and integrations\n\nWhen analyzing discovery notes, extract:\n1. Workload characteristics (stateless/stateful, languages, frameworks)\n2. High availability and disaster recovery requirements\n3. Compliance needs (HIPAA, PCI-DSS, SOC2, FedRAMP)\n4. Integration points (databases, message queues, external APIs)\n5. Scale requirements (users, requests/sec, data volume)\n6. CI/CD and development workflow\n\nOutput format:\n📋 OpenShift Architecture Proposal\n\n## Requirements Summary\n[Bullet list of key requirements]\n\n## Recommended Architecture\n```mermaid\n[Architecture diagram showing zones, node groups, networking]\n```\n\n## Node Sizing\n- Control plane: [size and count]\n- Worker nodes: [size and count with autoscaling range]\n- Rationale: [Why these sizes]\n\n## Required Operators\n[List with brief description of each]\n\n## Network Topology\n[Public/private subnets, ingress/egress patterns]\n\n## Estimated Costs\n[Monthly breakdown: cluster + compute + storage + data transfer]\n\n## Risk & Compliance Considerations\n[Security, compliance, operational risks]\n\n## Next Steps\n[Action items for moving forward]\n\nBe specific. Use exact instance types (AWS: m5.2xlarge, Azure: Standard_D8s_v3).\nInclude technical justification for all sizing decisions.\nFormat for copy-paste into customer proposals."
+        }
+      },
+      "id": "b2d3e4f5-g678-91bc-defg-2345678901bc",
+      "name": "AI Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [460, 400]
+    },
+    {
+      "parameters": {
+        "model": "gpt-4o",
+        "options": {
+          "temperature": 0.4,
+          "maxTokens": 8192
+        }
+      },
+      "id": "c3e4f5g6-h789-01cd-efgh-3456789012cd",
+      "name": "OpenAI GPT-4",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1,
+      "position": [460, 200],
+      "credentials": {
+        "openAiApi": {
+          "id": "REPLACE_WITH_YOUR_OPENAI_CREDENTIAL_ID",
+          "name": "OpenAI"
+        }
+      },
+      "notes": "Using GPT-4o for architecture diagrams and detailed proposals"
+    },
+    {
+      "parameters": {
+        "url": "http://kubernetes-mcp-server.openshift-mcp-server.svc.cluster.local:8080/sse",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "d4f5g6h7-i890-12de-fghi-4567890123de",
+      "name": "MCP Client (Kubernetes)",
+      "type": "@n8n/n8n-nodes-langchain.toolMcpClient",
+      "typeVersion": 1,
+      "position": [460, 600],
+      "notes": "Queries live ROSA cluster via MCP server for real-time data"
+    }
+  ],
+  "connections": {
+    "When chat message received": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI GPT-4": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "MCP Client (Kubernetes)": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "errorWorkflow": ""
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "createdAt": "2024-04-14T10:00:00.000Z",
+      "updatedAt": "2024-04-14T10:00:00.000Z",
+      "id": "1",
+      "name": "openshift"
+    },
+    {
+      "createdAt": "2024-04-14T10:00:00.000Z",
+      "updatedAt": "2024-04-14T10:00:00.000Z",
+      "id": "3",
+      "name": "presales"
+    },
+    {
+      "createdAt": "2024-04-14T10:00:00.000Z",
+      "updatedAt": "2024-04-14T10:00:00.000Z",
+      "id": "4",
+      "name": "architecture"
+    }
+  ],
+  "triggerCount": 1,
+  "updatedAt": "2024-04-14T10:00:00.000Z",
+  "versionId": "1"
+}
