@@ -41,7 +41,7 @@ See [OLLAMA-QUICKSTART.md](OLLAMA-QUICKSTART.md) for step-by-step instructions.
 ## Repository Layout
 
 ```
-deploy/          # n8n, MCP server, Ollama manifests + deploy scripts
+deploy/          # n8n, MCP server, Ollama (CPU: 07, GPU: 08) + deploy scripts
 scripts/         # setup-ollama-rosa.sh
 workflows/       # 03-solution-architect-ollama.json
 demo-scripts/    # SAMPLE-INPUTS.md (copy-paste demo prompts)

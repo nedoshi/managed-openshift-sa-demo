@@ -138,7 +138,14 @@ Your ROSA HCP Cluster
 ## 🔍 FAQ
 
 **Q: Do I need GPU?**
-A: No! Works fine on CPU (just a bit slower than GPU)
+A: No for demos, but GPU is much faster. After adding a GPU machine pool + NVIDIA GPU Operator:
+
+```bash
+oc delete deployment ollama -n n8n
+oc apply -f deploy/08-ollama-deployment-gpu.yaml
+```
+
+See `deploy/08-ollama-deployment-gpu.yaml` for prerequisites and switching back to CPU (`07`).
 
 **Q: How much storage?**
 A: 50GB PVC (holds 2-3 models)
