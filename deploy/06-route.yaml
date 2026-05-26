@@ -5,6 +5,10 @@ metadata:
   namespace: n8n
   labels:
     app.kubernetes.io/name: n8n
+  annotations:
+    # Default router timeout is ~30s; Ollama cold-start + inference needs longer.
+    haproxy.router.openshift.io/timeout: 10m
+    haproxy.router.openshift.io/timeout-tunnel: 10m
 spec:
   to:
     kind: Service
