@@ -1,5 +1,5 @@
 deploy/secret.yaml
-claude-session.txt
+
 *.bak
 *.kubeconfig
 .DS_Store
@@ -35,11 +35,5 @@ tmp/
 temp/
 *.tmp
 
-# Claude Code workspace
-.claude/
 
-# Local-only docs (kept on disk, not published to origin)
-docs/
-CLAUDE.md
-QUICK-START.md
-SETUP-SUMMARY.md
+
