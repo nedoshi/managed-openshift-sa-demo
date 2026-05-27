@@ -133,13 +133,14 @@ spec:
             seccompProfile:
               type: RuntimeDefault
           resources:
+            # g4dn.xlarge allocatable ~14.5Gi; GPU operator + system pods use ~5Gi before workload.
             requests:
               cpu: "2"
-              memory: "12Gi"
+              memory: "8Gi"
               nvidia.com/gpu: "1"
             limits:
               cpu: "4"
-              memory: "16Gi"
+              memory: "12Gi"
               nvidia.com/gpu: "1"
           volumeMounts:
             - name: ollama-models
@@ -190,7 +191,7 @@ spec:
     metadata:
       labels:
         app: ollama
-        ollama.ai/compute: cpu
+        ollama.ai/compute: gpu
     spec:
       serviceAccountName: ollama
       securityContext:

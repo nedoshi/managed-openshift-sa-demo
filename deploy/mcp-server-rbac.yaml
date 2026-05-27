@@ -1,0 +1,21 @@
+---
+# Read-only cluster access for kubernetes-mcp-server (nodes, pods, metrics, etc.).
+# Required when the MCP server answers node/resource questions via the in-cluster API.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: kubernetes-mcp-server
+  namespace: openshift-mcp-server
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: openshift-mcp-server-kubernetes-mcp-server
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-reader
+subjects:
+  - kind: ServiceAccount
+    name: kubernetes-mcp-server
+    namespace: openshift-mcp-server

@@ -54,8 +54,30 @@ echo ""
 # Step 3: Create namespace and MCPServer CR
 echo -e "${YELLOW}[3/4]${NC} Deploying Kubernetes MCP Server..."
 oc apply -f 00-openshift-mcp-server-namespace.yaml
+oc apply -f mcp-server-rbac.yaml
 oc apply -f mcp-server-openshift.yaml
 echo -e "${GREEN}✓${NC} MCPServer resource applied"
+
+# Ensure deployment uses SA with cluster-reader (operator may ignore runtime.security on older versions).
+echo -e "${YELLOW}      ${NC} Binding deployment to kubernetes-mcp-server service account..."
+for _ in $(seq 1 36); do
+  if oc get deployment kubernetes-mcp-server -n "$MCP_NAMESPACE" &>/dev/null; then
+    oc set serviceaccount deployment/kubernetes-mcp-server kubernetes-mcp-server -n "$MCP_NAMESPACE"
+    CURRENT_SA=$(oc get deployment kubernetes-mcp-server -n "$MCP_NAMESPACE" -o jsonpath='{.spec.template.spec.serviceAccountName}')
+    if [ "$CURRENT_SA" = "kubernetes-mcp-server" ]; then
+      oc rollout restart deployment/kubernetes-mcp-server -n "$MCP_NAMESPACE" >/dev/null
+      oc rollout status deployment/kubernetes-mcp-server -n "$MCP_NAMESPACE" --timeout=180s
+      echo -e "${GREEN}✓${NC} MCP server using service account: kubernetes-mcp-server"
+    fi
+    break
+  fi
+  sleep 5
+done
+if [ "${CURRENT_SA:-}" != "kubernetes-mcp-server" ]; then
+  echo -e "${YELLOW}!${NC} Run manually:"
+  echo "  oc set serviceaccount deployment/kubernetes-mcp-server kubernetes-mcp-server -n ${MCP_NAMESPACE}"
+  echo "  oc rollout restart deployment/kubernetes-mcp-server -n ${MCP_NAMESPACE}"
+fi
 echo ""
 
 # Step 4: Wait for MCP server pod

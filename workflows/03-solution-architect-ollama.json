@@ -7,54 +7,96 @@
       "name": "When chat message received",
       "type": "@n8n/n8n-nodes-langchain.chatTrigger",
       "typeVersion": 1.1,
-      "position": [240, 400],
+      "position": [
+        240,
+        400
+      ],
       "webhookId": "ollama-architect-chat"
     },
     {
       "parameters": {
+        "jsCode": "// Embedded in n8n \"Scenario Router\" Code node (copy when editing in UI).\nconst item = $input.first().json;\nconst raw = item.chatInput ?? item.input ?? item.text ?? '';\nconst text = String(raw).toLowerCase();\n\nconst scenarios = {\n  3: {\n    label: 'Migration Analysis',\n    name: 'EKS/AKS vs ROSA Comparison',\n    sections:\n      '## Executive Summary\\n## Current State (EKS/AKS)\\n## Proposed ROSA Architecture\\n## Cost Comparison (table: Line item | Current | ROSA | Delta)\\n## Feature Comparison (table: Feature | EKS/AKS | ROSA | Notes)\\n## Migration Plan (Phase 1/2/3 with timelines)\\n## Risks & Mitigations\\n## Recommendation',\n    mcp: false,\n    extras: 'Include mermaid architecture diagram. Cost table \u22656 rows. Feature table \u22658 rows.',\n  },\n  2: {\n    label: 'Optimization Report',\n    name: 'Cluster Optimization',\n    sections:\n      '## Executive Summary\\n## Current State (from MCP)\\n## Critical Issues (P1)\\n## Recommendations (P1/P2/P3 with oc/kubectl)\\n## Cost Impact\\n## Next Steps (30/60/90 day)',\n    mcp: true,\n    extras: 'Current State must cite \u22655 real objects from MCP (pods, nodes, namespaces, PVCs, or quotas). Each P1 item needs a concrete fix command.',\n  },\n  1: {\n    label: 'Proposal',\n    name: 'Pre-Sales Discovery Proposal',\n    sections:\n      '## Executive Summary\\n## Requirements Summary\\n## Recommended Architecture\\n## Node Sizing & Rationale\\n## Required Operators & Integrations\\n## Network & Storage\\n## Cost Estimate (monthly table + 3-year TCO)\\n## Security & Compliance\\n## Implementation Timeline\\n## Next Steps',\n    mcp: false,\n    extras: 'Include mermaid diagram (multi-AZ). Cost table \u22656 line items. Explain sizing math for workers.',\n  },\n};\n\nlet id = 1;\nif (/\\b(eks|aks)\\b/.test(text) && /(migrat|compar|vs\\.?\\s*rosa|competitive|retailco)/.test(text)) {\n  id = 3;\n} else if (\n  /(optimiz|cluster optimization|inspect.*cluster|use mcp|oomkill|resourcequota|production-rosa|techcorp|soc2 audit|audit in)/.test(\n    text,\n  )\n) {\n  id = 2;\n} else if (/(discovery|proposal|evaluat|considering openshift|acme|pre-sales|presales)/.test(text)) {\n  id = 1;\n}\n\nconst s = scenarios[id];\nconst isBriefChat =\n  raw.trim().length < 80 &&\n  !/(discovery|optimiz|eks|aks|cluster|migrat|proposal|rosa|openshift)/i.test(raw);\n\nconst depthBlock = isBriefChat\n  ? 'Reply in 2-4 sentences only.'\n  : [\n      'DEPTH (mandatory \u2014 do not skip sections):',\n      '- Target 1200-1800 words total.',\n      '- Every ## section: \u22655 bullets OR a table with \u22654 rows.',\n      '- Executive Summary: 3-5 sentences with customer name and key outcome.',\n      s.extras,\n    ].join('\\n');\n\nconst pricingHint =\n  id !== 2\n    ? '\\nPricing anchors (us-east-1, approximate): ROSA control plane ~$350/mo/cluster; m5.2xlarge ~$280/mo; r5.xlarge ~$220/mo; gp3 storage ~$0.08/GB-mo. Show calculations.'\n    : '';\n\nconst router = [\n  '',\n  '---',\n  '[WORKFLOW ROUTER]',\n  `Scenario ${id}: ${s.name}`,\n  'Use these section headers in order:',\n  s.sections,\n  depthBlock,\n  s.mcp\n    ? 'MANDATORY: Call MCP/kubernetes tools first. Do not invent cluster state.'\n    : 'Do not call MCP unless the user asks about the live cluster.',\n  'Grounding: every section must reference facts from the user message (company, numbers, dates, regions).',\n  pricingHint,\n  '---',\n].join('\\n');\n\nreturn {\n  json: {\n    ...item,\n    chatInput: `${raw}${router}`,\n    input: `${raw}${router}`,\n    scenarioId: id,\n    scenarioLabel: s.label,\n    scenarioName: s.name,\n    mcpRequired: s.mcp,\n  },\n};\n"
+      },
+      "id": "a0b1c2d3-scenario-router-0001",
+      "name": "Scenario Router",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        360,
+        400
+      ],
+      "notes": "Keyword-based scenario detection + section template injection (helps qwen2.5:7b avoid identical outputs)."
+    },
+    {
+      "parameters": {
         "options": {
-          "systemMessage": "You are an OpenShift Solution Architect for ROSA/ARO. Detect scenario: (1) discovery→proposal, (2) cluster optimization, (3) EKS/AKS comparison. Use MCP tools only when the user asks about the live cluster. Be concise unless the user pastes discovery notes—then use sections: Requirements, Architecture, Node Sizing, Cost Estimate, Security, Next Steps. Use exact instance types. Estimates are approximate (no live pricing API)."
-        }
+          "systemMessage": "You are a senior OpenShift Solution Architect for ROSA (AWS) and ARO (Azure). Write customer-ready, detailed technical documents.\n\nEvery user message ends with [WORKFLOW ROUTER]. Follow it exactly for scenario type, section headers, and DEPTH requirements.\n\nQuality bar:\n- Detailed and evidence-based (like a Red Hat SA proposal), not a bullet outline.\n- Extract ALL requirements from the user text; map each to architecture, sizing, security, or cost.\n- Use exact instance types (m5.2xlarge, r5.xlarge) and show sizing rationale.\n- Dollar figures: approximate unless from MCP; show line-item math.\n- Never reuse generic filler; cite the customer's name, budgets, dates, and regions from their message.\n\nScenario focus:\n1 Proposal \u2014 multi-AZ ROSA design, operators, network, itemized costs, timeline.\n2 Optimization \u2014 MCP-first audit; real object names; P1/P2/P3 with oc/kubectl commands.\n3 Migration \u2014 fair EKS/AKS vs ROSA tables, migration phases, risks.\n\nOnly give a short reply when [WORKFLOW ROUTER] says \"2-4 sentences only\".",
+          "maxIterations": 20
+        },
+        "text": "={{ $json.chatInput }}"
       },
       "id": "b2d3e4f5-g678-91bc-defg-2345678901bc",
       "name": "AI Agent",
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 1.7,
-      "position": [460, 400]
+      "position": [
+        560,
+        400
+      ]
     },
     {
       "parameters": {
-        "model": "llama3.1:8b",
+        "model": "qwen2.5:14b",
         "options": {
           "baseURL": "http://ollama.n8n.svc.cluster.local:11434",
-          "temperature": 0.3,
-          "numPredict": 1024
+          "temperature": 0.4,
+          "numPredict": 8192,
+          "repeatPenalty": 1.05,
+          "topP": 0.9
         }
       },
       "id": "c3e4f5g6-h789-01cd-efgh-3456789012cd",
       "name": "Ollama (Local)",
       "type": "@n8n/n8n-nodes-langchain.lmChatOllama",
       "typeVersion": 1,
-      "position": [460, 200],
-      "notes": "Uses Ollama running on ROSA - no API keys needed, 100% local"
+      "position": [
+        560,
+        200
+      ],
+      "notes": "qwen2.5:14b on GPU (~9GB). Use 7b only if VRAM constrained."
     },
     {
       "parameters": {
-        "url": "http://kubernetes-mcp-server.openshift-mcp-server.svc.cluster.local:8080/sse",
+        "endpointUrl": "http://kubernetes-mcp-server.openshift-mcp-server.svc.cluster.local:8080/sse",
+        "serverTransport": "sse",
         "options": {
-          "timeout": 30000
+          "timeout": 120000
         }
       },
       "id": "d4f5g6h7-i890-12de-fghi-4567890123de",
       "name": "MCP Client (Kubernetes)",
-      "type": "@n8n/n8n-nodes-langchain.toolMcpClient",
-      "typeVersion": 1,
-      "position": [680, 400],
-      "notes": "Queries live OpenShift/ROSA cluster via MCP server for real-time data"
+      "type": "@n8n/n8n-nodes-langchain.mcpClientTool",
+      "typeVersion": 1.2,
+      "position": [
+        780,
+        520
+      ],
+      "notes": "Required for Scenario 2 when router sets mcpRequired"
     }
   ],
   "connections": {
     "When chat message received": {
+      "main": [
+        [
+          {
+            "node": "Scenario Router",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Scenario Router": {
       "main": [
         [
           {
@@ -92,43 +134,24 @@
   "settings": {
     "executionOrder": "v1",
     "saveManualExecutions": true,
-    "callerPolicy": "workflowsFromSameOwner",
-    "errorWorkflow": ""
+    "callerPolicy": "workflowsFromSameOwner"
   },
   "staticData": null,
   "tags": [
     {
-      "createdAt": "2026-05-26T10:00:00.000Z",
-      "updatedAt": "2026-05-26T10:00:00.000Z",
-      "id": "1",
       "name": "openshift"
     },
     {
-      "createdAt": "2026-05-26T10:00:00.000Z",
-      "updatedAt": "2026-05-26T10:00:00.000Z",
-      "id": "2",
       "name": "ollama"
     },
     {
-      "createdAt": "2026-05-26T10:00:00.000Z",
-      "updatedAt": "2026-05-26T10:00:00.000Z",
-      "id": "3",
       "name": "solution-architect"
     },
     {
-      "createdAt": "2026-05-26T10:00:00.000Z",
-      "updatedAt": "2026-05-26T10:00:00.000Z",
-      "id": "4",
       "name": "no-api-keys"
-    },
-    {
-      "createdAt": "2026-05-26T10:00:00.000Z",
-      "updatedAt": "2026-05-26T10:00:00.000Z",
-      "id": "5",
-      "name": "enterprise"
     }
   ],
   "triggerCount": 1,
-  "updatedAt": "2026-05-26T18:00:00.000Z",
-  "versionId": "3"
+  "updatedAt": "2026-05-27T00:00:00.000Z",
+  "versionId": "4"
 }

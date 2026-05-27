@@ -7,77 +7,79 @@
       "name": "When chat message received",
       "type": "@n8n/n8n-nodes-langchain.chatTrigger",
       "typeVersion": 1.1,
-      "position": [240, 400],
+      "position": [
+        240,
+        400
+      ],
       "webhookId": "ollama-architect-chat"
     },
     {
       "parameters": {
+        "jsCode": "// Embedded in n8n \"Scenario Router\" Code node (copy when editing in UI).\nconst item = $input.first().json;\nconst raw = item.chatInput ?? item.input ?? item.text ?? '';\nconst text = String(raw).toLowerCase();\n\nconst scenarios = {\n  3: {\n    label: 'Migration Analysis',\n    name: 'EKS/AKS vs ROSA Comparison',\n    sections:\n      '## Executive Summary\\n## Current State (EKS/AKS)\\n## Proposed ROSA Architecture\\n## Cost Comparison (table: Line item | Current | ROSA | Delta)\\n## Feature Comparison (table: Feature | EKS/AKS | ROSA | Notes)\\n## Migration Plan (Phase 1/2/3 with timelines)\\n## Risks & Mitigations\\n## Recommendation',\n    mcp: false,\n    extras: 'Include mermaid architecture diagram. Cost table \u22656 rows. Feature table \u22658 rows.',\n  },\n  2: {\n    label: 'Optimization Report',\n    name: 'Cluster Optimization',\n    sections:\n      '## Executive Summary\\n## Current State (from MCP)\\n## Critical Issues (P1)\\n## Recommendations (P1/P2/P3 with oc/kubectl)\\n## Cost Impact\\n## Next Steps (30/60/90 day)',\n    mcp: true,\n    extras: 'Current State must cite \u22655 real objects from MCP (pods, nodes, namespaces, PVCs, or quotas). Each P1 item needs a concrete fix command.',\n  },\n  1: {\n    label: 'Proposal',\n    name: 'Pre-Sales Discovery Proposal',\n    sections:\n      '## Executive Summary\\n## Requirements Summary\\n## Recommended Architecture\\n## Node Sizing & Rationale\\n## Required Operators & Integrations\\n## Network & Storage\\n## Cost Estimate (monthly table + 3-year TCO)\\n## Security & Compliance\\n## Implementation Timeline\\n## Next Steps',\n    mcp: false,\n    extras: 'Include mermaid diagram (multi-AZ). Cost table \u22656 line items. Explain sizing math for workers.',\n  },\n};\n\nlet id = 1;\nif (/\\b(eks|aks)\\b/.test(text) && /(migrat|compar|vs\\.?\\s*rosa|competitive|retailco)/.test(text)) {\n  id = 3;\n} else if (\n  /(optimiz|cluster optimization|inspect.*cluster|use mcp|oomkill|resourcequota|production-rosa|techcorp|soc2 audit|audit in)/.test(\n    text,\n  )\n) {\n  id = 2;\n} else if (/(discovery|proposal|evaluat|considering openshift|acme|pre-sales|presales)/.test(text)) {\n  id = 1;\n}\n\nconst s = scenarios[id];\nconst isBriefChat =\n  raw.trim().length < 80 &&\n  !/(discovery|optimiz|eks|aks|cluster|migrat|proposal|rosa|openshift)/i.test(raw);\n\nconst depthBlock = isBriefChat\n  ? 'Reply in 2-4 sentences only.'\n  : [\n      'DEPTH (mandatory \u2014 do not skip sections):',\n      '- Target 1200-1800 words total.',\n      '- Every ## section: \u22655 bullets OR a table with \u22654 rows.',\n      '- Executive Summary: 3-5 sentences with customer name and key outcome.',\n      s.extras,\n    ].join('\\n');\n\nconst pricingHint =\n  id !== 2\n    ? '\\nPricing anchors (us-east-1, approximate): ROSA control plane ~$350/mo/cluster; m5.2xlarge ~$280/mo; r5.xlarge ~$220/mo; gp3 storage ~$0.08/GB-mo. Show calculations.'\n    : '';\n\nconst router = [\n  '',\n  '---',\n  '[WORKFLOW ROUTER]',\n  `Scenario ${id}: ${s.name}`,\n  'Use these section headers in order:',\n  s.sections,\n  depthBlock,\n  s.mcp\n    ? 'MANDATORY: Call MCP/kubernetes tools first. Do not invent cluster state.'\n    : 'Do not call MCP unless the user asks about the live cluster.',\n  'Grounding: every section must reference facts from the user message (company, numbers, dates, regions).',\n  pricingHint,\n  '---',\n].join('\\n');\n\nreturn {\n  json: {\n    ...item,\n    chatInput: `${raw}${router}`,\n    input: `${raw}${router}`,\n    scenarioId: id,\n    scenarioLabel: s.label,\n    scenarioName: s.name,\n    mcpRequired: s.mcp,\n  },\n};\n"
+      },
+      "id": "a0b1c2d3-scenario-router-0001",
+      "name": "Scenario Router",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        360,
+        400
+      ]
+    },
+    {
+      "parameters": {
         "options": {
-          "systemMessage": "You are an OpenShift Solution Architect for ROSA/ARO. Reply in under 200 words unless the user pastes discovery notes. Do not use tools. For discovery notes only, use sections: Requirements, Architecture, Node Sizing, Cost Estimate, Security, Next Steps.",
-          "maxIterations": 1
-        }
+          "systemMessage": "You are a senior OpenShift Solution Architect for ROSA (AWS) and ARO (Azure). Write customer-ready, detailed technical documents.\n\nEvery user message ends with [WORKFLOW ROUTER]. Follow it exactly for scenario type, section headers, and DEPTH requirements.\n\nQuality bar:\n- Detailed and evidence-based (like a Red Hat SA proposal), not a bullet outline.\n- Extract ALL requirements from the user text; map each to architecture, sizing, security, or cost.\n- Use exact instance types (m5.2xlarge, r5.xlarge) and show sizing rationale.\n- Dollar figures: approximate unless from MCP; show line-item math.\n- Never reuse generic filler; cite the customer's name, budgets, dates, and regions from their message.\n\nScenario focus:\n1 Proposal \u2014 multi-AZ ROSA design, operators, network, itemized costs, timeline.\n2 Optimization \u2014 MCP-first audit; real object names; P1/P2/P3 with oc/kubectl commands.\n3 Migration \u2014 fair EKS/AKS vs ROSA tables, migration phases, risks.\n\nOnly give a short reply when [WORKFLOW ROUTER] says \"2-4 sentences only\".\n\nYour full reply is exported to Google Docs \u2014 use clean markdown headings, pipe tables (header + |---| row), and bullet lists for Google Docs export.",
+          "maxIterations": 20
+        },
+        "text": "={{ $json.chatInput }}"
       },
       "id": "b2d3e4f5-g678-91bc-defg-2345678901bc",
       "name": "AI Agent",
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 1.7,
-      "position": [460, 400]
+      "position": [
+        560,
+        400
+      ]
     },
     {
       "parameters": {
-        "model": "llama3.1:8b",
+        "model": "qwen2.5:14b",
         "options": {
           "baseURL": "http://ollama.n8n.svc.cluster.local:11434",
-          "temperature": 0.3,
-          "numPredict": 512
+          "temperature": 0.4,
+          "numPredict": 8192,
+          "repeatPenalty": 1.05,
+          "topP": 0.9
         }
       },
       "id": "c3e4f5g6-h789-01cd-efgh-3456789012cd",
       "name": "Ollama (Local)",
       "type": "@n8n/n8n-nodes-langchain.lmChatOllama",
       "typeVersion": 1,
-      "position": [460, 200],
-      "notes": "Uses Ollama running on ROSA - no API keys needed, 100% local"
+      "position": [
+        560,
+        200
+      ],
+      "notes": "qwen2.5:14b on GPU (~9GB). Use 7b only if VRAM constrained."
     },
     {
       "parameters": {
-        "url": "http://kubernetes-mcp-server.openshift-mcp-server.svc.cluster.local:8080/sse",
+        "endpointUrl": "http://kubernetes-mcp-server.openshift-mcp-server.svc.cluster.local:8080/sse",
+        "serverTransport": "sse",
         "options": {
-          "timeout": 30000
+          "timeout": 120000
         }
       },
       "id": "d4f5g6h7-i890-12de-fghi-4567890123de",
-      "name": "MCP Client (Kubernetes)",
-      "type": "@n8n/n8n-nodes-langchain.toolMcpClient",
-      "typeVersion": 1,
-      "position": [680, 400],
-      "notes": "Queries live OpenShift/ROSA cluster via MCP server for real-time data"
-    },
-    {
-      "parameters": {
-        "operation": "create",
-        "title": "={{ \"ROSA Proposal - \" + $now.format('yyyy-MM-dd HH:mm') }}",
-        "bodyParametersUi": {
-          "parameter": [
-            {
-              "name": "requests",
-              "value": "={{ [{\"insertText\": {\"text\": $('AI Agent').item.json.output, \"location\": {\"index\": 1}}}] }}"
-            }
-          ]
-        }
-      },
-      "id": "e5g6h7i8-j901-23ef-ghij-5678901234ef",
-      "name": "Export to Google Docs",
-      "type": "n8n-nodes-base.googleDocs",
-      "typeVersion": 2,
-      "position": [680, 600],
-      "credentials": {
-        "googleDocsOAuth2Api": {
-          "id": "REPLACE_WITH_YOUR_CREDENTIAL_ID",
-          "name": "Google Docs - ROSA Exports"
-        }
-      },
-      "notes": "Automatically saves each proposal to Google Docs for easy sharing"
+      "name": "MCP Client",
+      "type": "@n8n/n8n-nodes-langchain.mcpClientTool",
+      "typeVersion": 1.2,
+      "position": [
+        780,
+        520
+      ]
     },
     {
       "parameters": {
@@ -94,12 +96,111 @@
       "name": "Check if response exists",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
-      "position": [680, 500],
-      "notes": "Only export if AI generated a response"
+      "position": [
+        780,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// n8n Code node: \"Format Proposal for Google Docs\"\n// Google Docs ignores most <style> blocks \u2014 use tables + inline styles only.\nconst agentOut = $('AI Agent').first().json.output || '';\nconst router = $('Scenario Router').first().json;\nconst scenarioLabel = router.scenarioLabel || 'Proposal';\nconst scenarioName = router.scenarioName || 'OpenShift Solution Architect';\nconst rawUser = String(router.chatInput || '').split('---')[0].trim();\n\nlet customer = 'Customer';\nconst nameMatch =\n  rawUser.match(/(?:notes|request|analysis)\\s*[-\u2013]\\s*([^\\n(]+)/i) ||\n  rawUser.match(/^([A-Z][A-Za-z0-9 &.'-]{2,40})(?:\\s+\\(|$)/m);\nif (nameMatch) customer = nameMatch[1].trim().replace(/\\s+/g, ' ');\n\nconst generatedAt = new Date().toISOString().slice(0, 16).replace('T', ' ');\n\nconst RH_RED = '#EE0000';\nconst RH_DARK = '#1A1A1A';\nconst TEXT_DARK = '#212121';\nconst TEXT_MUTED = '#444444';\nconst BORDER = '#CCCCCC';\n\nfunction escapeHtml(s) {\n  return String(s)\n    .replace(/&/g, '&amp;')\n    .replace(/</g, '&lt;')\n    .replace(/>/g, '&gt;')\n    .replace(/\"/g, '&quot;');\n}\n\nfunction inlineMarkdown(line) {\n  let s = escapeHtml(line);\n  s = s.replace(/\\*\\*(.+?)\\*\\*/g, '<strong>$1</strong>');\n  s = s.replace(/\\*(.+?)\\*/g, '<em>$1</em>');\n  s = s.replace(/`([^`]+)`/g, `<span style=\"font-family:Consolas,monospace;background-color:#F5F5F5;padding:1px 4px;\">$1</span>`);\n  return s;\n}\n\nfunction sectionHeading(title) {\n  return (\n    `<table border=\"0\" cellpadding=\"0\" cellspacing=\"0\" width=\"100%\" style=\"width:100%;margin:20px 0 6px 0;\">` +\n    `<tr><td style=\"border-bottom:2px solid ${RH_RED};padding-bottom:4px;\">` +\n    `<span style=\"font-family:Arial,Helvetica,sans-serif;font-size:14pt;font-weight:bold;color:${RH_RED};\">${escapeHtml(title)}</span>` +\n    `</td></tr></table>`\n  );\n}\n\nfunction bodyParagraph(text) {\n  return (\n    `<p style=\"font-family:Arial,Helvetica,sans-serif;font-size:11pt;color:${TEXT_DARK};line-height:1.5;margin:0 0 10px 0;text-align:left;\">` +\n    `${inlineMarkdown(text)}</p>`\n  );\n}\n\nfunction markdownToHtml(md) {\n  const lines = md.replace(/\\r\\n/g, '\\n').split('\\n');\n  const out = [];\n  let inCode = false;\n  let codeBuf = [];\n  let tableRows = [];\n  let listType = null;\n\n  function flushTable() {\n    if (!tableRows.length) return;\n    const rows = tableRows.filter((r) => r.some((c) => c.trim()));\n    if (!rows.length) {\n      tableRows = [];\n      return;\n    }\n    const header = rows[0];\n    const body = rows.slice(1).filter((r) => !r.every((c) => /^-+$/.test(c.trim())));\n    out.push(\n      `<table border=\"1\" cellpadding=\"8\" cellspacing=\"0\" width=\"100%\" style=\"width:100%;border-collapse:collapse;margin:12px 0;\">`,\n    );\n    out.push('<tr>');\n    for (const c of header) {\n      out.push(\n        `<td bgcolor=\"${RH_RED}\" style=\"background-color:${RH_RED};color:#FFFFFF;font-family:Arial,sans-serif;font-size:10pt;font-weight:bold;border:1px solid ${BORDER};\">${inlineMarkdown(c.trim())}</td>`,\n      );\n    }\n    out.push('</tr>');\n    let even = false;\n    for (const row of body) {\n      even = !even;\n      const bg = even ? '#FAFAFA' : '#FFFFFF';\n      out.push('<tr>');\n      for (const c of row) {\n        out.push(\n          `<td bgcolor=\"${bg}\" style=\"background-color:${bg};color:${TEXT_DARK};font-family:Arial,sans-serif;font-size:10pt;border:1px solid ${BORDER};vertical-align:top;\">${inlineMarkdown(c.trim())}</td>`,\n        );\n      }\n      out.push('</tr>');\n    }\n    out.push('</table>');\n    tableRows = [];\n  }\n\n  function closeList() {\n    if (listType) {\n      out.push(listType === 'ul' ? '</ul>' : '</ol>');\n      listType = null;\n    }\n  }\n\n  const listStyle =\n    'font-family:Arial,Helvetica,sans-serif;font-size:11pt;color:' + TEXT_DARK + ';margin:0 0 10px 18px;';\n\n  for (const line of lines) {\n    if (line.trim().startsWith('```')) {\n      if (inCode) {\n        out.push(\n          `<p style=\"font-family:Consolas,monospace;font-size:9.5pt;background-color:#F5F5F5;border-left:4px solid ${RH_RED};padding:10px 12px;color:${TEXT_DARK};margin:10px 0;\">` +\n            escapeHtml(codeBuf.join('\\n')) +\n            '</p>',\n        );\n        codeBuf = [];\n        inCode = false;\n      } else {\n        flushTable();\n        closeList();\n        inCode = true;\n      }\n      continue;\n    }\n    if (inCode) {\n      codeBuf.push(line);\n      continue;\n    }\n\n    if (line.includes('|') && /^\\s*\\|?.+\\|.+/.test(line)) {\n      closeList();\n      const cells = line\n        .trim()\n        .replace(/^\\|/, '')\n        .replace(/\\|$/, '')\n        .split('|')\n        .map((c) => c.trim());\n      tableRows.push(cells);\n      continue;\n    }\n    flushTable();\n\n    const h1 = line.match(/^#\\s+(.+)/);\n    const h2 = line.match(/^##\\s+(.+)/);\n    const h3 = line.match(/^###\\s+(.+)/);\n    if (h1) {\n      closeList();\n      out.push(sectionHeading(h1[1]));\n      continue;\n    }\n    if (h2) {\n      closeList();\n      out.push(sectionHeading(h2[1]));\n      continue;\n    }\n    if (h3) {\n      closeList();\n      out.push(\n        `<p style=\"font-family:Arial,sans-serif;font-size:12pt;font-weight:bold;color:${TEXT_DARK};margin:14px 0 6px 0;\">${inlineMarkdown(h3[1])}</p>`,\n      );\n      continue;\n    }\n\n    const ul = line.match(/^\\s*[-*]\\s+(.+)/);\n    const ol = line.match(/^\\s*\\d+\\.\\s+(.+)/);\n    if (ul) {\n      if (listType !== 'ul') {\n        closeList();\n        listType = 'ul';\n        out.push(`<ul style=\"${listStyle}\">`);\n      }\n      out.push(`<li style=\"margin:4px 0;\">${inlineMarkdown(ul[1])}</li>`);\n      continue;\n    }\n    if (ol) {\n      if (listType !== 'ol') {\n        closeList();\n        listType = 'ol';\n        out.push(`<ol style=\"${listStyle}\">`);\n      }\n      out.push(`<li style=\"margin:4px 0;\">${inlineMarkdown(ol[1])}</li>`);\n      continue;\n    }\n\n    closeList();\n    if (!line.trim()) continue;\n    out.push(bodyParagraph(line));\n  }\n\n  flushTable();\n  closeList();\n  if (inCode && codeBuf.length) {\n    out.push(\n      `<p style=\"font-family:Consolas,monospace;font-size:9.5pt;background-color:#F5F5F5;border-left:4px solid ${RH_RED};padding:10px 12px;color:${TEXT_DARK};\">${escapeHtml(codeBuf.join('\\n'))}</p>`,\n    );\n  }\n  return out.join('\\n');\n}\n\nconst bodyHtml = markdownToHtml(agentOut);\n\n// Cover: single full-width table \u2014 bgcolor + inline color (survives Google Docs import)\nconst coverHtml = `\n<table border=\"0\" cellpadding=\"0\" cellspacing=\"0\" width=\"100%\" style=\"width:100%;border-collapse:collapse;margin:0 0 24px 0;\">\n  <tr>\n    <td bgcolor=\"${RH_RED}\" style=\"background-color:${RH_RED};padding:10px 16px;\">\n      <span style=\"font-family:Arial,Helvetica,sans-serif;font-size:10pt;font-weight:bold;color:#FFFFFF;letter-spacing:1px;\">RED HAT OPENSHIFT</span>\n    </td>\n  </tr>\n  <tr>\n    <td bgcolor=\"${RH_DARK}\" style=\"background-color:${RH_DARK};padding:28px 16px 8px 16px;\">\n      <span style=\"font-family:Arial,Helvetica,sans-serif;font-size:22pt;font-weight:bold;color:#FFFFFF;display:block;margin-bottom:6px;\">${escapeHtml(customer)}</span>\n      <span style=\"font-family:Arial,Helvetica,sans-serif;font-size:14pt;color:#FFCCCC;display:block;margin-bottom:16px;\">${escapeHtml(scenarioLabel)}</span>\n    </td>\n  </tr>\n  <tr>\n    <td bgcolor=\"#F5F5F5\" style=\"background-color:#F5F5F5;padding:12px 16px 16px 16px;border-bottom:3px solid ${RH_RED};\">\n      <span style=\"font-family:Arial,Helvetica,sans-serif;font-size:10pt;color:${TEXT_DARK};line-height:1.6;\">\n        <strong>Document type:</strong> ${escapeHtml(scenarioName)}<br>\n        <strong>Generated:</strong> ${escapeHtml(generatedAt)} UTC<br>\n        <strong>Classification:</strong> Customer confidential \u2014 draft for internal review\n      </span>\n    </td>\n  </tr>\n</table>`;\n\nconst footerHtml = `\n<table border=\"0\" cellpadding=\"0\" cellspacing=\"0\" width=\"100%\" style=\"width:100%;margin-top:28px;\">\n  <tr>\n    <td style=\"border-top:1px solid ${BORDER};padding-top:10px;\">\n      <span style=\"font-family:Arial,sans-serif;font-size:9pt;color:#666666;\">\n        Generated by OpenShift Solution Architect (Ollama). Cost figures are approximate unless cited from live cluster data (MCP).\n      </span>\n    </td>\n  </tr>\n</table>`;\n\nconst html = `<!DOCTYPE html>\n<html><head><meta charset=\"utf-8\"></head>\n<body style=\"font-family:Arial,Helvetica,sans-serif;font-size:11pt;color:${TEXT_DARK};margin:0;padding:0;\">\n${coverHtml}\n${bodyHtml}\n${footerHtml}\n</body></html>`;\n\nconst docTitle = `OpenShift ${scenarioLabel} \u2014 ${customer} \u2014 ${generatedAt.slice(0, 10)}`;\nconst folderId = 'REPLACE_WITH_GOOGLE_DRIVE_FOLDER_ID';\n\nconst boundary = 'n8n_boundary_' + Date.now();\nconst meta = {\n  name: docTitle,\n  mimeType: 'application/vnd.google-apps.document',\n};\nif (folderId && !String(folderId).startsWith('REPLACE')) {\n  meta.parents = [folderId];\n}\nconst metadata = JSON.stringify(meta);\nconst multipartBody =\n  `--${boundary}\\r\\n` +\n  `Content-Type: application/json; charset=UTF-8\\r\\n\\r\\n` +\n  `${metadata}\\r\\n` +\n  `--${boundary}\\r\\n` +\n  `Content-Type: text/html; charset=UTF-8\\r\\n\\r\\n` +\n  `${html}\\r\\n` +\n  `--${boundary}--\\r\\n`;\n\nconst contentType = `multipart/related; boundary=${boundary}`;\n\nreturn {\n  json: {\n    docTitle,\n    boundary,\n    contentType,\n    multipartBody,\n    folderId: folderId && !String(folderId).startsWith('REPLACE') ? folderId : '',\n    customer,\n    scenarioLabel,\n    webViewLinkHint: 'See Upload styled Google Doc \u2192 webViewLink',\n  },\n};\n"
+      },
+      "id": "b8c9d0e1-format-proposal-html-01",
+      "name": "Format Proposal for Google Docs",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1000,
+        400
+      ],
+      "notes": "Markdown \u2192 styled HTML + cover page. Source: workflows/ollama-google-doc-formatter.js"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://www.googleapis.com/upload/drive/v3/files",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleDriveOAuth2Api",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "uploadType",
+              "value": "multipart"
+            },
+            {
+              "name": "fields",
+              "value": "id,name,webViewLink"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "={{ $('Format Proposal for Google Docs').item.json.contentType }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "binaryData",
+        "inputDataFieldName": "data",
+        "options": {
+          "timeout": 120000
+        }
+      },
+      "id": "c9d0e1f2-upload-styled-doc-0001",
+      "name": "Upload styled Google Doc",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1220,
+        400
+      ],
+      "continueOnFail": true,
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "REPLACE_WITH_YOUR_DRIVE_CREDENTIAL_ID",
+          "name": "Google Drive - ROSA Exports"
+        }
+      },
+      "notes": "Body = binary multipart from Code node. Content-Type must include boundary."
+    },
+    {
+      "parameters": {
+        "operation": "toText",
+        "sourceProperty": "multipartBody",
+        "binaryPropertyName": "data",
+        "options": {
+          "fileName": "upload.bin",
+          "encoding": "utf8"
+        }
+      },
+      "id": "d0e1f2a3-multipart-to-binary-01",
+      "name": "Multipart to Binary",
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [
+        1110,
+        400
+      ],
+      "notes": "Converts multipartBody string \u2192 $binary.data (required for HTTP upload node)."
     }
   ],
   "connections": {
     "When chat message received": {
+      "main": [
+        [
+          {
+            "node": "Scenario Router",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Scenario Router": {
       "main": [
         [
           {
@@ -125,7 +226,7 @@
       "main": [
         [
           {
-            "node": "Export to Google Docs",
+            "node": "Format Proposal for Google Docs",
             "type": "main",
             "index": 0
           }
@@ -142,55 +243,58 @@
           }
         ]
       ]
+    },
+    "MCP Client": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Proposal for Google Docs": {
+      "main": [
+        [
+          {
+            "node": "Multipart to Binary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Multipart to Binary": {
+      "main": [
+        [
+          {
+            "node": "Upload styled Google Doc",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
-  "pinData": {},
   "settings": {
-    "executionOrder": "v1",
-    "saveManualExecutions": true,
-    "callerPolicy": "workflowsFromSameOwner",
-    "errorWorkflow": ""
+    "executionOrder": "v1"
   },
-  "staticData": null,
   "tags": [
     {
-      "createdAt": "2026-05-26T10:00:00.000Z",
-      "updatedAt": "2026-05-26T10:00:00.000Z",
-      "id": "1",
       "name": "openshift"
     },
     {
-      "createdAt": "2026-05-26T10:00:00.000Z",
-      "updatedAt": "2026-05-26T10:00:00.000Z",
-      "id": "2",
       "name": "ollama"
     },
     {
-      "createdAt": "2026-05-26T10:00:00.000Z",
-      "updatedAt": "2026-05-26T10:00:00.000Z",
-      "id": "3",
       "name": "solution-architect"
     },
     {
-      "createdAt": "2026-05-26T10:00:00.000Z",
-      "updatedAt": "2026-05-26T10:00:00.000Z",
-      "id": "4",
-      "name": "no-api-keys"
-    },
-    {
-      "createdAt": "2026-05-26T10:00:00.000Z",
-      "updatedAt": "2026-05-26T10:00:00.000Z",
-      "id": "5",
-      "name": "enterprise"
-    },
-    {
-      "createdAt": "2026-05-26T10:00:00.000Z",
-      "updatedAt": "2026-05-26T10:00:00.000Z",
-      "id": "6",
       "name": "google-docs-export"
     }
   ],
-  "triggerCount": 1,
-  "updatedAt": "2026-05-26T18:30:00.000Z",
-  "versionId": "4"
+  "updatedAt": "2026-05-27T12:00:00.000Z",
+  "versionId": "3"
 }

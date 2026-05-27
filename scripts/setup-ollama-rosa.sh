@@ -101,18 +101,20 @@ fi
 
 echo ""
 echo -e "${BLUE}Choose model to download:${NC}"
-echo "1) llama3.1:8b (Recommended - 4.7GB)"
-echo "2) qwen2.5:7b (4.7GB, good for technical content)"
-echo "3) qwen2.5:3b (2GB, fastest on CPU)"
-echo "4) Skip model download (do it manually later)"
-read -p "Enter choice (1-4): " MODEL_CHOICE
+echo "1) qwen2.5:14b (Recommended for SA workflows — 9GB, best quality on T4 GPU)"
+echo "2) qwen2.5:7b (4.7GB, faster but thinner proposals)"
+echo "3) llama3.1:8b (4.9GB)"
+echo "4) qwen2.5:3b (2GB, CPU / smoke tests only)"
+echo "5) Skip model download (do it manually later)"
+read -p "Enter choice (1-5): " MODEL_CHOICE
 
 case $MODEL_CHOICE in
-    1) MODEL="llama3.1:8b" ;;
+    1) MODEL="qwen2.5:14b" ;;
     2) MODEL="qwen2.5:7b" ;;
-    3) MODEL="qwen2.5:3b" ;;
-    4) MODEL="" ;;
-    *) MODEL="llama3.1:8b" ;;
+    3) MODEL="llama3.1:8b" ;;
+    4) MODEL="qwen2.5:3b" ;;
+    5) MODEL="" ;;
+    *) MODEL="qwen2.5:14b" ;;
 esac
 
 POD_NAME=$(oc get pod -l app=ollama -n n8n -o jsonpath='{.items[0].metadata.name}')

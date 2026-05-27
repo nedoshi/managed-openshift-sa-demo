@@ -19,3 +19,7 @@ spec:
     port: 8080
     args:
       - --read-only
+  runtime:
+    security:
+      # Operator defaults to namespace "default" SA (no RBAC). Use SA from mcp-server-rbac.yaml.
+      serviceAccountName: kubernetes-mcp-server
