@@ -35,7 +35,7 @@ oc whoami
 # In n8n UI:
 # 1. Import from File
 # 2. Select one:
-#    workflows/03-solution-architect-ollama.json
+#    workflows/02-solution-architect-ollama.json
 #    workflows/03-solution-architect-ollama-with-export.json  (saves to Google Docs)
 # 3. Done! (No credentials needed)
 ```
